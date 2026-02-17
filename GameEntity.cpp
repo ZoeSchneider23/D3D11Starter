@@ -1,9 +1,9 @@
 #include "GameEntity.h"
 
-GameEntity::GameEntity(Mesh mesh)
+GameEntity::GameEntity(std::shared_ptr<Mesh> mesh)
 {
-	transform = Transform();
-	meshPointer = std::make_shared<Mesh>(mesh);
+	transform = std::make_shared<Transform>();
+	meshPointer = mesh;
 }
 
 std::shared_ptr<Mesh> GameEntity::GetMesh()
@@ -13,7 +13,7 @@ std::shared_ptr<Mesh> GameEntity::GetMesh()
 
 std::shared_ptr<Transform> GameEntity::GetTransform()
 {
-	return std::shared_ptr<Transform>(&transform);
+	return transform;
 }
 
 void GameEntity::Draw()

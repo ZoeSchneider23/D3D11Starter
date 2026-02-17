@@ -210,10 +210,16 @@ void Game::CreateGeometry()
 		{ XMFLOAT3(-0.8f, -0.7f, +0.0f), green },
 	};
 	unsigned int hexagonIndices[] = { 3, 2, 1, 5, 4, 3, 1, 0, 5, 3, 1, 5 };
+
 	std::shared_ptr<Mesh> hexagon;
 	hexagon = std::make_shared<Mesh>(&hexagonVertices[0], 6, &hexagonIndices[0], 12);
+	
 	//create game entities
-	entities.push_back(std::make_shared<GameEntity>(*hexagon));
+	std::shared_ptr<GameEntity> e1;
+	e1 = std::make_shared<GameEntity>(hexagon);
+	entities.push_back(e1);
+
+
 	//entities.push_back(std::make_shared<GameEntity>(hexagon.get()));
 	//entities.push_back(std::make_shared<GameEntity>(hexagon.get()));
 	//entities.push_back(std::make_shared<GameEntity>(rect.get()));
@@ -283,8 +289,8 @@ void Game::Update(float deltaTime, float totalTime)
 	ImguiUpdateHelper(deltaTime);
 	BuildUI();
 
-	for (std::shared_ptr<GameEntity> i : entities) {
-		i->GetTransform()->SetPosition((float)sin(totalTime), 0.0f, 0.0f);
+	for (auto &i : entities) {
+	//	i->GetTransform()->SetPosition((float)sin(totalTime), 0.0f, 0.0f);
 	}
 
 	// Example input checking: Quit if the escape key is pressed
@@ -317,7 +323,7 @@ void Game::Draw(float deltaTime, float totalTime)
 			Graphics::Context->Map(constantBuffer.Get(), 0, D3D11_MAP_WRITE_DISCARD, 0, &mappedBuffer);
 			memcpy(mappedBuffer.pData, &vsData, sizeof(vsData));
 			Graphics::Context->Unmap(constantBuffer.Get(), 0);
-
+		
 			//Bind constant buffer data
 			Graphics::Context->VSSetConstantBuffers(0, 1, constantBuffer.GetAddressOf());
 			i->Draw();
