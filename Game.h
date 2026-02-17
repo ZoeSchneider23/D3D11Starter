@@ -5,6 +5,8 @@
 #include <memory>
 #include "Mesh.h"
 #include <vector>
+#include "BufferStruct.h"
+#include "GameEntity.h"
 
 class Game
 {
@@ -30,6 +32,15 @@ private:
 
 	void BuildUI();
 
+
+	//ImGui vars
+	float bgColor[4] = { 0.4f, 0.6f, 0.75f, 0.0f };
+	bool demoVisibility = true;
+	float v_rad = 0;
+
+	//Constant Buffer Struct
+	BufferStruct vsData;
+
 	// Note the usage of ComPtr below
 	//  - This is a smart pointer for objects that abide by the
 	//     Component Object Model, which DirectX objects do
@@ -38,6 +49,7 @@ private:
 	// Buffers to hold actual geometry data
 	Microsoft::WRL::ComPtr<ID3D11Buffer> vertexBuffer;
 	Microsoft::WRL::ComPtr<ID3D11Buffer> indexBuffer;
+	Microsoft::WRL::ComPtr<ID3D11Buffer> constantBuffer;
 
 	// Shaders and shader-related constructs
 	Microsoft::WRL::ComPtr<ID3D11PixelShader> pixelShader;
@@ -45,6 +57,6 @@ private:
 	Microsoft::WRL::ComPtr<ID3D11InputLayout> inputLayout;
 
 
-	std::vector<std::shared_ptr<Mesh>> meshes;
+	std::vector<std::shared_ptr<GameEntity>> entities;
 };
 

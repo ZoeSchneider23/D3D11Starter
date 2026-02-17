@@ -4,6 +4,7 @@
 #include "Input.h"
 #include "PathHelpers.h"
 #include "Window.h"
+#include "BufferStruct.h"
 
 #include <DirectXMath.h>
 #include "imgui.h"
@@ -17,11 +18,6 @@
 // For the DirectX Math library
 using namespace DirectX;
 
-//ImGui vars
-float bgColor[] = {0.4f, 0.6f, 0.75f, 0.0f};
-bool demoVisibility = true;
-float v_rad = 0;
-char buf[] = {0,0,0,0,0,0,0,0,0,0,0};
 
 
 // --------------------------------------------------------
@@ -35,6 +31,20 @@ Game::Game()
 	//  - You'll be expanding and/or replacing these later
 	LoadShaders();
 	CreateGeometry();
+
+	//add constant buffer
+	// Describe the constant buffer
+	D3D11_BUFFER_DESC cbDesc = {}; // Sets struct to all zeros
+	cbDesc.BindFlags = D3D11_BIND_CONSTANT_BUFFER;
+	cbDesc.ByteWidth = (sizeof(BufferStruct) + 15) / 16 * 16; // Must be a multiple of 16
+	cbDesc.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
+	cbDesc.Usage = D3D11_USAGE_DYNAMIC;
+	Graphics::Device->CreateBuffer(&cbDesc, 0, constantBuffer.GetAddressOf());
+
+	//Create constant buffer data
+	vsData.color = XMFLOAT4(0.5f, 0.5f, 0.5f, 1.0f);
+	vsData.world = XMFLOAT4X4 ();
+
 
 	// Set initial graphics API state
 	//  - These settings persist until we change them
@@ -168,6 +178,7 @@ void Game::CreateGeometry()
 	XMFLOAT4 green = XMFLOAT4(0.0f, 1.0f, 0.0f, 1.0f);
 	XMFLOAT4 blue = XMFLOAT4(0.0f, 0.0f, 1.0f, 1.0f);
 
+	//Create meshes
 	Vertex triangleVertices[] =
 	{
 		{ XMFLOAT3(+0.0f, +0.5f, +0.0f), red },
@@ -177,7 +188,6 @@ void Game::CreateGeometry()
 	unsigned int triangleIndices[] = { 0, 1, 2 };
 	std::shared_ptr<Mesh> triangle;
 	triangle = std::make_shared<Mesh>(&triangleVertices[0], 3, &triangleIndices[0], 3);
-	meshes.push_back(triangle);
 
 	Vertex rectVertices[] =
 	{
@@ -189,7 +199,6 @@ void Game::CreateGeometry()
 	unsigned int rectIndices[] = { 0, 3, 2, 2, 1, 0 };
 	std::shared_ptr<Mesh> rect;
 	rect = std::make_shared<Mesh>(&rectVertices[0], 4, &rectIndices[0], 6);
-	meshes.push_back(rect);
 
 	Vertex hexagonVertices[] =
 	{
@@ -203,7 +212,12 @@ void Game::CreateGeometry()
 	unsigned int hexagonIndices[] = { 3, 2, 1, 5, 4, 3, 1, 0, 5, 3, 1, 5 };
 	std::shared_ptr<Mesh> hexagon;
 	hexagon = std::make_shared<Mesh>(&hexagonVertices[0], 6, &hexagonIndices[0], 12);
-	meshes.push_back(hexagon);
+	//create game entities
+	entities.push_back(std::make_shared<GameEntity>(*hexagon));
+	//entities.push_back(std::make_shared<GameEntity>(hexagon.get()));
+	//entities.push_back(std::make_shared<GameEntity>(hexagon.get()));
+	//entities.push_back(std::make_shared<GameEntity>(rect.get()));
+	//entities.push_back(std::make_shared<GameEntity>(triangle.get()));
 }
 
 void Game::ImguiUpdateHelper(float deltaTime) {
@@ -233,27 +247,19 @@ void Game::BuildUI() {
 	//BG color picker
 	ImGui::ColorEdit4("Background Color", bgColor);
 	
-	//Toggle Demo Visibility
-	if (ImGui::Button("Toggle Demo")) {
-		demoVisibility = !demoVisibility;
-	}
-	if (demoVisibility) {
-		ImGui::ShowDemoWindow();
-	}
-
-	if (ImGui::CollapsingHeader("Custom Stuff")) {
-		ImGui::SliderAngle("Weee", &v_rad);
-		ImGui::InputText("Your name", buf, 11);
-	}
-
-	if (ImGui::CollapsingHeader("Mesh Data")) {
-		for (int i = 0; i < meshes.size(); i++) {
-			ImGui::Text("Mesh #%d:", i + 1);
-			ImGui::Text("\tTriangles: %d", meshes.at(i)->getIndexCount() / 3);
-			ImGui::Text("\tVertices: %d", meshes.at(i)->getVertexCount());
-			ImGui::Text("\tIndices: %d", meshes.at(i)->getIndexCount());
-		}
-	}
+	//if (ImGui::CollapsingHeader("Mesh Data")) {
+	//	for (int i = 0; i < meshes.size(); i++) {
+	//		ImGui::Text("Mesh #%d:", i + 1);
+	//		ImGui::Text("\tTriangles: %d", meshes.at(i)->getIndexCount() / 3);
+	//		ImGui::Text("\tVertices: %d", meshes.at(i)->getVertexCount());
+	//		ImGui::Text("\tIndices: %d", meshes.at(i)->getIndexCount());
+	//	}
+	//}
+	//
+	//if (ImGui::CollapsingHeader("Constant Buffer")) {
+	//	ImGui::SliderFloat3("Offset", &vsData.offset.x, -1, 1);
+	//	ImGui::ColorEdit4("Color", &vsData.color.x);
+	//}
 
 	ImGui::End();
 }
@@ -276,6 +282,10 @@ void Game::Update(float deltaTime, float totalTime)
 {
 	ImguiUpdateHelper(deltaTime);
 	BuildUI();
+
+	for (std::shared_ptr<GameEntity> i : entities) {
+		i->GetTransform()->SetPosition((float)sin(totalTime), 0.0f, 0.0f);
+	}
 
 	// Example input checking: Quit if the escape key is pressed
 	if (Input::KeyDown(VK_ESCAPE))
@@ -301,7 +311,15 @@ void Game::Draw(float deltaTime, float totalTime)
 	// - These steps are generally repeated for EACH object you draw
 	// - Other Direct3D calls will also be necessary to do more complex things
 	{
-		for (std::shared_ptr<Mesh> i : meshes) {
+		for (std::shared_ptr<GameEntity> i : entities) {
+			vsData.world = i->GetTransform()->GetWorldMatrix();
+			D3D11_MAPPED_SUBRESOURCE mappedBuffer = {};
+			Graphics::Context->Map(constantBuffer.Get(), 0, D3D11_MAP_WRITE_DISCARD, 0, &mappedBuffer);
+			memcpy(mappedBuffer.pData, &vsData, sizeof(vsData));
+			Graphics::Context->Unmap(constantBuffer.Get(), 0);
+
+			//Bind constant buffer data
+			Graphics::Context->VSSetConstantBuffers(0, 1, constantBuffer.GetAddressOf());
 			i->Draw();
 		}
 	}
