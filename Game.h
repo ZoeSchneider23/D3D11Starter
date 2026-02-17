@@ -58,5 +58,6 @@ private:
 
 
 	std::vector<std::shared_ptr<GameEntity>> entities;
+	std::vector<DirectX::XMFLOAT3> entityTransformValues;
 };
 

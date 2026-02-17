@@ -18,7 +18,8 @@
 // For the DirectX Math library
 using namespace DirectX;
 
-
+//test global
+XMFLOAT3 pos1 = XMFLOAT3(0.0f, 0.0f, 0.0f);
 
 // --------------------------------------------------------
 // The constructor is called after the window and graphics API
@@ -191,10 +192,10 @@ void Game::CreateGeometry()
 
 	Vertex rectVertices[] =
 	{
-		{ XMFLOAT3(-0.7f, +0.8f, +0.0f), red },
-		{ XMFLOAT3(-0.7f, +0.7f, +0.0f), red },
-		{ XMFLOAT3(-0.5f, +0.7f, +0.0f), blue },
-		{ XMFLOAT3(-0.5f, +0.8f, +0.0f), blue },
+		{ XMFLOAT3(-0.1f, +0.05f, +0.0f), red },
+		{ XMFLOAT3(-0.1f, -0.05f, +0.0f), red },
+		{ XMFLOAT3(+0.1f, -0.05f, +0.0f), blue },
+		{ XMFLOAT3(+0.1f, +0.05f, +0.0f), blue },
 	};
 	unsigned int rectIndices[] = { 0, 3, 2, 2, 1, 0 };
 	std::shared_ptr<Mesh> rect;
@@ -202,12 +203,12 @@ void Game::CreateGeometry()
 
 	Vertex hexagonVertices[] =
 	{
-		{ XMFLOAT3(-0.7f, -0.8f, +0.0f), red },
-		{ XMFLOAT3(-0.6f, -0.8f, +0.0f), blue },
-		{ XMFLOAT3(-0.5f, -0.7f, +0.0f), green },
-		{ XMFLOAT3(-0.6f, -0.6f, +0.0f), red },
-		{ XMFLOAT3(-0.7f, -0.6f, +0.0f), blue },
-		{ XMFLOAT3(-0.8f, -0.7f, +0.0f), green },
+		{ XMFLOAT3(-0.05f, -0.1f, +0.0f), red },
+		{ XMFLOAT3(+0.05f, -0.1f, +0.0f), blue },
+		{ XMFLOAT3(+0.15f, -0.0f, +0.0f), green },
+		{ XMFLOAT3(+0.05f, +0.1f, +0.0f), red },
+		{ XMFLOAT3(-0.05f, +0.1f, +0.0f), blue },
+		{ XMFLOAT3(-0.15f, -0.0f, +0.0f), green },
 	};
 	unsigned int hexagonIndices[] = { 3, 2, 1, 5, 4, 3, 1, 0, 5, 3, 1, 5 };
 
@@ -215,15 +216,16 @@ void Game::CreateGeometry()
 	hexagon = std::make_shared<Mesh>(&hexagonVertices[0], 6, &hexagonIndices[0], 12);
 	
 	//create game entities
-	std::shared_ptr<GameEntity> e1;
-	e1 = std::make_shared<GameEntity>(hexagon);
-	entities.push_back(e1);
-
-
-	//entities.push_back(std::make_shared<GameEntity>(hexagon.get()));
-	//entities.push_back(std::make_shared<GameEntity>(hexagon.get()));
-	//entities.push_back(std::make_shared<GameEntity>(rect.get()));
-	//entities.push_back(std::make_shared<GameEntity>(triangle.get()));
+	entities.push_back(std::make_shared<GameEntity>(hexagon));
+	entities.push_back(std::make_shared<GameEntity>(hexagon));
+	entities.push_back(std::make_shared<GameEntity>(hexagon));
+	entities.push_back(std::make_shared<GameEntity>(rect));
+	entities.push_back(std::make_shared<GameEntity>(triangle));
+	for (auto i : entities) {
+		entityTransformValues.push_back(i->GetTransform()->GetPosition());
+		entityTransformValues.push_back(i->GetTransform()->GetPitchYawRoll());
+		entityTransformValues.push_back(i->GetTransform()->GetScale());
+	}
 }
 
 void Game::ImguiUpdateHelper(float deltaTime) {
@@ -267,6 +269,22 @@ void Game::BuildUI() {
 	//	ImGui::ColorEdit4("Color", &vsData.color.x);
 	//}
 
+	for (int i = 0; i < entities.size(); i++) {
+		ImGui::Text("Mesh #%d:", i+1);
+		ImGui::PushID(i);
+
+		entities[i]->GetTransform()->SetPosition(entityTransformValues[3 * i]);
+		ImGui::DragFloat3("Position", &entityTransformValues[3 * i].x, 0.01f);
+
+		entities[i]->GetTransform()->SetRotation(entityTransformValues[3 * i + 1]);
+		ImGui::DragFloat3("Rotation", &entityTransformValues[3 * i + 1].x, 0.01f);
+
+		entities[i]->GetTransform()->SetScale(entityTransformValues[3 * i + 2]);
+		ImGui::DragFloat3("Scale", &entityTransformValues[3 * i + 2].x, 0.01f);
+
+		ImGui::PopID();
+	}
+
 	ImGui::End();
 }
 
@@ -288,10 +306,6 @@ void Game::Update(float deltaTime, float totalTime)
 {
 	ImguiUpdateHelper(deltaTime);
 	BuildUI();
-
-	for (auto &i : entities) {
-	//	i->GetTransform()->SetPosition((float)sin(totalTime), 0.0f, 0.0f);
-	}
 
 	// Example input checking: Quit if the escape key is pressed
 	if (Input::KeyDown(VK_ESCAPE))
