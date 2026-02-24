@@ -46,7 +46,10 @@ Game::Game()
 	vsData.color = XMFLOAT4(0.5f, 0.5f, 0.5f, 1.0f);
 	vsData.world = XMFLOAT4X4 ();
 
-
+	//Create Camera
+	cams.push_back(std::make_shared<Camera>(XMFLOAT3(0.0f, 0.0f, -10.0f), Window::AspectRatio(), XM_PIDIV4));
+	cams.push_back(std::make_shared<Camera>(XMFLOAT3(1.0f, 0.0f, -10.0f), Window::AspectRatio(), 1));
+	activeCam = 0;
 	// Set initial graphics API state
 	//  - These settings persist until we change them
 	//  - Some of these, like the primitive topology & input layout, probably won't change
@@ -251,10 +254,10 @@ void Game::BuildUI() {
 
 	ImGui::Text("Frame Rate: %f fps", ImGui::GetIO().Framerate);
 	ImGui::Text("Window Resolution: %dx%d", Window::Width(), Window::Height());
-	
+
 	//BG color picker
 	ImGui::ColorEdit4("Background Color", bgColor);
-	
+
 	//if (ImGui::CollapsingHeader("Mesh Data")) {
 	//	for (int i = 0; i < meshes.size(); i++) {
 	//		ImGui::Text("Mesh #%d:", i + 1);
@@ -268,10 +271,28 @@ void Game::BuildUI() {
 	//	ImGui::SliderFloat3("Offset", &vsData.offset.x, -1, 1);
 	//	ImGui::ColorEdit4("Color", &vsData.color.x);
 	//}
+	{
+		ImGui::Text("Current Camera Info:");
+		ImGui::PushID(0);
+		XMFLOAT3 pos = cams[activeCam]->GetTransform()->GetPosition();
+		ImGui::Text("Position: %f,%f,%f", pos.x, pos.y, pos.z);
+		XMFLOAT3 rot = cams[activeCam]->GetTransform()->GetPitchYawRoll();
+		ImGui::Text("Rotation: %f,%f,%f", rot.x, rot.y, rot.z);
+		ImGui::Text("FOV: %f", XMConvertToDegrees(cams[activeCam]->getFov()));
 
-	for (int i = 0; i < entities.size(); i++) {
+		if (ImGui::RadioButton("Cam 1", activeCam == 0)) {
+			activeCam = 0;
+		}
+		if (ImGui::RadioButton("Cam 2", activeCam == 1)) {
+			activeCam = 1;
+		}
+	}
+
+	ImGui::PopID();
+
+	/*for (int i = 0; i < entities.size(); i++) {
 		ImGui::Text("Mesh #%d:", i+1);
-		ImGui::PushID(i);
+		ImGui::PushID(i+1);
 
 		entities[i]->GetTransform()->SetPosition(entityTransformValues[3 * i]);
 		ImGui::DragFloat3("Position", &entityTransformValues[3 * i].x, 0.01f);
@@ -283,7 +304,7 @@ void Game::BuildUI() {
 		ImGui::DragFloat3("Scale", &entityTransformValues[3 * i + 2].x, 0.01f);
 
 		ImGui::PopID();
-	}
+	}*/
 
 	ImGui::End();
 }
@@ -295,7 +316,11 @@ void Game::BuildUI() {
 // --------------------------------------------------------
 void Game::OnResize()
 {
-	
+	for (auto cam : cams) {
+		if (cam != nullptr) {
+			cam->UpdateProjectionMatrix(Window::AspectRatio());
+		}
+	}
 }
 
 
@@ -306,6 +331,11 @@ void Game::Update(float deltaTime, float totalTime)
 {
 	ImguiUpdateHelper(deltaTime);
 	BuildUI();
+	//move objects;
+	entities[2]->GetTransform()->SetPosition(sin(totalTime), 0, 0);
+	entities[4]->GetTransform()->SetRotation(0, 0, totalTime);
+
+	cams[activeCam]->Update(deltaTime);
 
 	// Example input checking: Quit if the escape key is pressed
 	if (Input::KeyDown(VK_ESCAPE))
@@ -325,6 +355,10 @@ void Game::Draw(float deltaTime, float totalTime)
 		// Clear the back buffer (erase what's on screen) and depth buffer
 		Graphics::Context->ClearRenderTargetView(Graphics::BackBufferRTV.Get(),	bgColor);
 		Graphics::Context->ClearDepthStencilView(Graphics::DepthBufferDSV.Get(), D3D11_CLEAR_DEPTH, 1.0f, 0);
+
+		//Set up camera
+		vsData.view = cams[activeCam]->getViewMatrix();
+		vsData.projection = cams[activeCam]->getProjectionMatrix();
 	}
 
 	// DRAW geometry

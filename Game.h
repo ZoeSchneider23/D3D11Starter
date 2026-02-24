@@ -7,6 +7,7 @@
 #include <vector>
 #include "BufferStruct.h"
 #include "GameEntity.h"
+#include "Camera.h"
 
 class Game
 {
@@ -59,5 +60,8 @@ private:
 
 	std::vector<std::shared_ptr<GameEntity>> entities;
 	std::vector<DirectX::XMFLOAT3> entityTransformValues;
+
+	std::vector<std::shared_ptr<Camera>> cams;
+	int activeCam;
 };
 
