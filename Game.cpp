@@ -31,6 +31,15 @@ Game::Game()
 	// geometry to draw and some simple camera matrices.
 	//  - You'll be expanding and/or replacing these later
 	LoadShaders();
+
+	//Create materials
+	XMFLOAT4 col1 = XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f);
+	mats.push_back(std::make_shared<Material>(col1, vertexShader, pixelShader));
+	XMFLOAT4 col2 = XMFLOAT4(0.0f, 1.0f, 1.0f, 1.0f);
+	mats.push_back(std::make_shared<Material>(col2, vertexShader, pixelShader));
+	XMFLOAT4 col3 = XMFLOAT4(1.0f, 0.0f, 0.0f, 1.0f);
+	mats.push_back(std::make_shared<Material>(col3, vertexShader, pixelShader));
+	
 	CreateGeometry();
 
 	//add constant buffer
@@ -148,7 +157,7 @@ void Game::LoadShaders()
 	//  - Doing this NOW because it requires a vertex shader's byte code to verify against!
 	//  - Luckily, we already have that loaded (the vertex shader blob above)
 	{
-		D3D11_INPUT_ELEMENT_DESC inputElements[2] = {};
+		D3D11_INPUT_ELEMENT_DESC inputElements[3] = {};
 
 		// Set up the first element - a position, which is 3 float values
 		inputElements[0].Format = DXGI_FORMAT_R32G32B32_FLOAT;				// Most formats are described as color channels; really it just means "Three 32-bit floats"
@@ -156,14 +165,18 @@ void Game::LoadShaders()
 		inputElements[0].AlignedByteOffset = D3D11_APPEND_ALIGNED_ELEMENT;	// How far into the vertex is this?  Assume it's after the previous element
 
 		// Set up the second element - a color, which is 4 more float values
-		inputElements[1].Format = DXGI_FORMAT_R32G32B32A32_FLOAT;			// 4x 32-bit floats
-		inputElements[1].SemanticName = "COLOR";							// Match our vertex shader input!
+		inputElements[1].Format = DXGI_FORMAT_R32G32_FLOAT;			// 4x 32-bit floats
+		inputElements[1].SemanticName = "TEXCOORD";							// Match our vertex shader input!
 		inputElements[1].AlignedByteOffset = D3D11_APPEND_ALIGNED_ELEMENT;	// After the previous element
+
+		inputElements[2].Format = DXGI_FORMAT_R32G32B32_FLOAT;			// 4x 32-bit floats
+		inputElements[2].SemanticName = "NORMAL";							// Match our vertex shader input!
+		inputElements[2].AlignedByteOffset = D3D11_APPEND_ALIGNED_ELEMENT;	// After the previous element
 
 		// Create the input layout, verifying our description against actual shader code
 		Graphics::Device->CreateInputLayout(
 			inputElements,							// An array of descriptions
-			2,										// How many elements in that array?
+			3,										// How many elements in that array?
 			vertexShaderBlob->GetBufferPointer(),	// Pointer to the code of a shader that uses this layout
 			vertexShaderBlob->GetBufferSize(),		// Size of the shader code that uses this layout
 			inputLayout.GetAddressOf());			// Address of the resulting ID3D11InputLayout pointer
@@ -183,52 +196,10 @@ void Game::CreateGeometry()
 	XMFLOAT4 blue = XMFLOAT4(0.0f, 0.0f, 1.0f, 1.0f);
 
 	//Create meshes
-	Vertex triangleVertices[] =
-	{
-		{ XMFLOAT3(+0.0f, +0.5f, +0.0f), red },
-		{ XMFLOAT3(+0.5f, -0.5f, +0.0f), blue },
-		{ XMFLOAT3(-0.5f, -0.5f, +0.0f), green },
-	};
-	unsigned int triangleIndices[] = { 0, 1, 2 };
-	std::shared_ptr<Mesh> triangle;
-	triangle = std::make_shared<Mesh>(&triangleVertices[0], 3, &triangleIndices[0], 3);
+	std::shared_ptr mesh1 = std::make_shared<Mesh>(FixPath("../../Assets/Meshes/helix.obj").c_str());
+	entities.push_back(std::make_shared<GameEntity>(mesh1, mats[0]));
 
-	Vertex rectVertices[] =
-	{
-		{ XMFLOAT3(-0.1f, +0.05f, +0.0f), red },
-		{ XMFLOAT3(-0.1f, -0.05f, +0.0f), red },
-		{ XMFLOAT3(+0.1f, -0.05f, +0.0f), blue },
-		{ XMFLOAT3(+0.1f, +0.05f, +0.0f), blue },
-	};
-	unsigned int rectIndices[] = { 0, 3, 2, 2, 1, 0 };
-	std::shared_ptr<Mesh> rect;
-	rect = std::make_shared<Mesh>(&rectVertices[0], 4, &rectIndices[0], 6);
-
-	Vertex hexagonVertices[] =
-	{
-		{ XMFLOAT3(-0.05f, -0.1f, +0.0f), red },
-		{ XMFLOAT3(+0.05f, -0.1f, +0.0f), blue },
-		{ XMFLOAT3(+0.15f, -0.0f, +0.0f), green },
-		{ XMFLOAT3(+0.05f, +0.1f, +0.0f), red },
-		{ XMFLOAT3(-0.05f, +0.1f, +0.0f), blue },
-		{ XMFLOAT3(-0.15f, -0.0f, +0.0f), green },
-	};
-	unsigned int hexagonIndices[] = { 3, 2, 1, 5, 4, 3, 1, 0, 5, 3, 1, 5 };
-
-	std::shared_ptr<Mesh> hexagon;
-	hexagon = std::make_shared<Mesh>(&hexagonVertices[0], 6, &hexagonIndices[0], 12);
 	
-	//create game entities
-	entities.push_back(std::make_shared<GameEntity>(hexagon));
-	entities.push_back(std::make_shared<GameEntity>(hexagon));
-	entities.push_back(std::make_shared<GameEntity>(hexagon));
-	entities.push_back(std::make_shared<GameEntity>(rect));
-	entities.push_back(std::make_shared<GameEntity>(triangle));
-	for (auto i : entities) {
-		entityTransformValues.push_back(i->GetTransform()->GetPosition());
-		entityTransformValues.push_back(i->GetTransform()->GetPitchYawRoll());
-		entityTransformValues.push_back(i->GetTransform()->GetScale());
-	}
 }
 
 void Game::ImguiUpdateHelper(float deltaTime) {
@@ -332,8 +303,8 @@ void Game::Update(float deltaTime, float totalTime)
 	ImguiUpdateHelper(deltaTime);
 	BuildUI();
 	//move objects;
-	entities[2]->GetTransform()->SetPosition(sin(totalTime), 0, 0);
-	entities[4]->GetTransform()->SetRotation(0, 0, totalTime);
+	//entities[2]->GetTransform()->SetPosition(sin(totalTime), 0, 0);
+	//entities[4]->GetTransform()->SetRotation(0, 0, totalTime);
 
 	cams[activeCam]->Update(deltaTime);
 
@@ -366,6 +337,7 @@ void Game::Draw(float deltaTime, float totalTime)
 	// - Other Direct3D calls will also be necessary to do more complex things
 	{
 		for (std::shared_ptr<GameEntity> i : entities) {
+			vsData.color = i->GetMat()->GetColorTint();
 			vsData.world = i->GetTransform()->GetWorldMatrix();
 			D3D11_MAPPED_SUBRESOURCE mappedBuffer = {};
 			Graphics::Context->Map(constantBuffer.Get(), 0, D3D11_MAP_WRITE_DISCARD, 0, &mappedBuffer);

@@ -8,6 +8,7 @@
 #include "BufferStruct.h"
 #include "GameEntity.h"
 #include "Camera.h"
+#include "Material.h"
 
 class Game
 {
@@ -56,11 +57,10 @@ private:
 	Microsoft::WRL::ComPtr<ID3D11PixelShader> pixelShader;
 	Microsoft::WRL::ComPtr<ID3D11VertexShader> vertexShader;
 	Microsoft::WRL::ComPtr<ID3D11InputLayout> inputLayout;
-
+	std::vector<std::shared_ptr<Material>> mats;
 
 	std::vector<std::shared_ptr<GameEntity>> entities;
 	std::vector<DirectX::XMFLOAT3> entityTransformValues;
-
 	std::vector<std::shared_ptr<Camera>> cams;
 	int activeCam;
 };
