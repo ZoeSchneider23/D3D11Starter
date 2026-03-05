@@ -11,7 +11,7 @@ struct VertexToPixel
 	//  |   Name          Semantic
 	//  |    |                |
 	//  v    v                v
-	float4 screenPosition	: SV_POSITION;
+    float4 screenPosition : SV_POSITION;
     float2 uv : TEXCOORD;
     float3 normal : NORMAL;
     float time : TIME;
@@ -38,5 +38,5 @@ float4 main(VertexToPixel input) : SV_TARGET
 	//   interpolated for each pixel between the corresponding vertices 
 	//   of the triangle we're rendering
     
-    return colorTint;
+    return colorTint * ((sin(input.time) + 1) / 2);
 }

@@ -28,7 +28,10 @@ private:
 
 	// Initialization helper methods - feel free to customize, combine, remove, etc.
 	void LoadShaders();
+	void CreateMaterials();
 	void CreateGeometry();
+	void LoadVertexShader(ID3DBlob* vertexShaderBlob);
+	void LoadPixelShader(ID3DBlob* vertexShaderBlob);
 
 	void ImguiUpdateHelper(float deltaTime);
 
@@ -41,7 +44,8 @@ private:
 	float v_rad = 0;
 
 	//Constant Buffer Struct
-	BufferStruct vsData;
+	VertexBufferStruct vsData;
+	PixelBufferStruct psData;
 
 	// Note the usage of ComPtr below
 	//  - This is a smart pointer for objects that abide by the
@@ -51,11 +55,12 @@ private:
 	// Buffers to hold actual geometry data
 	Microsoft::WRL::ComPtr<ID3D11Buffer> vertexBuffer;
 	Microsoft::WRL::ComPtr<ID3D11Buffer> indexBuffer;
-	Microsoft::WRL::ComPtr<ID3D11Buffer> constantBuffer;
+	Microsoft::WRL::ComPtr<ID3D11Buffer> vertexConstantBuffer;
+	Microsoft::WRL::ComPtr<ID3D11Buffer> pixelConstantBuffer;
 
 	// Shaders and shader-related constructs
-	Microsoft::WRL::ComPtr<ID3D11PixelShader> pixelShader;
-	Microsoft::WRL::ComPtr<ID3D11VertexShader> vertexShader;
+	std::vector<Microsoft::WRL::ComPtr<ID3D11PixelShader>> pixelShaders;
+	std::vector<Microsoft::WRL::ComPtr<ID3D11VertexShader>> vertexShaders;
 	Microsoft::WRL::ComPtr<ID3D11InputLayout> inputLayout;
 	std::vector<std::shared_ptr<Material>> mats;
 
