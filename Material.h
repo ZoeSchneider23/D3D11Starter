@@ -12,6 +12,7 @@ private:
 	DirectX::XMFLOAT4 colorTint;
 	DirectX::XMFLOAT2 uvScale;
 	DirectX::XMFLOAT2 uvOffset;
+	int textureNum;
 	Microsoft::WRL::ComPtr<ID3D11VertexShader> vShader;
 	Microsoft::WRL::ComPtr<ID3D11PixelShader> pShader;
 	Microsoft::WRL::ComPtr<ID3D11ShaderResourceView> textureSRVs[128];
@@ -29,6 +30,8 @@ public:
 	Microsoft::WRL::ComPtr<ID3D11PixelShader> GetPShader();
 	DirectX::XMFLOAT2 GetUVScale();
 	DirectX::XMFLOAT2 GetUVOffset();
+	int GetNumTextures();
+	Microsoft::WRL::ComPtr<ID3D11ShaderResourceView> GetSRV(int index);
 	//Setters
 	void SetColorTint(DirectX::XMFLOAT4 value);
 	void SetVShader(Microsoft::WRL::ComPtr<ID3D11VertexShader> value);
@@ -37,6 +40,7 @@ public:
 	void SetUVScale(DirectX::XMFLOAT2 value);
 
 	void AddTextureSRV(unsigned int index, Microsoft::WRL::ComPtr<ID3D11ShaderResourceView> srv);
+
 	void AddSampler(unsigned int index, Microsoft::WRL::ComPtr<ID3D11SamplerState> samp);
 	void BindTexturesAndSamplers();
 };

@@ -404,12 +404,35 @@ void Game::BuildUI() {
 		ImGui::PopID();
 	}*/
 
-	if (ImGui::CollapsingHeader("Entity Data")) {
+	if (ImGui::CollapsingHeader("Entity Material Data")) {
 		for (int i = 0; i < entities.size(); i++) {
 			ImGui::PushID(i + 1);
+			ImGui::Text("Mesh #%d:", i + 1);
 
+			//Color Tint
+			XMFLOAT4 color = entities[i]->GetMat()->GetColorTint();
+			if (ImGui::ColorEdit4("Color Tint", &color.x)) {
+				entities[i]->GetMat()->SetColorTint(color);
+			};
+
+			//UV Offset
+			XMFLOAT2 uvScale = entities[i]->GetMat()->GetUVScale();
+			if (ImGui::DragFloat2("UV Scale", &uvScale.x, 0.05f)) {
+				entities[i]->GetMat()->SetUVScale(uvScale);
+			};
+
+			//UV Offset
+			XMFLOAT2 uvOffset = entities[i]->GetMat()->GetUVOffset();
+			if (ImGui::DragFloat2("UV Offset", &uvOffset.x, 0.05f)) {
+				entities[i]->GetMat()->SetUVOffset(uvOffset);
+			};
+
+			//Textures
+			for (int j = 0; j < entities[i]->GetMat()->GetNumTextures(); j++) {
+				ImGui::Text("Texture #%d:", j + 1);
+				ImGui::Image((void*)entities[i]->GetMat()->GetSRV(j).Get(), ImVec2(256,256));
+			}
 			
-			//ImGui::ColorPicker4("Color Tint", );
 
 			ImGui::PopID();
 		}

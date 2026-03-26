@@ -7,6 +7,7 @@ Material::Material(DirectX::XMFLOAT4 colorTint, Microsoft::WRL::ComPtr<ID3D11Ver
     this->pShader = pShader;
     uvOffset = DirectX::XMFLOAT2(0.0f, 0.0f);
     uvScale = DirectX::XMFLOAT2(1.0f, 1.0f);
+    textureNum = 0;
 }
 
 DirectX::XMFLOAT4 Material::GetColorTint()
@@ -32,6 +33,16 @@ DirectX::XMFLOAT2 Material::GetUVScale()
 DirectX::XMFLOAT2 Material::GetUVOffset()
 {
     return uvOffset;
+}
+
+int Material::GetNumTextures()
+{
+    return textureNum;
+}
+
+Microsoft::WRL::ComPtr<ID3D11ShaderResourceView> Material::GetSRV(int index)
+{
+    return textureSRVs[index];
 }
 
 void Material::SetColorTint(DirectX::XMFLOAT4 value)
@@ -62,6 +73,7 @@ void Material::SetUVScale(DirectX::XMFLOAT2 value)
 void Material::AddTextureSRV(unsigned int index, Microsoft::WRL::ComPtr<ID3D11ShaderResourceView> srv)
 {
     textureSRVs[index] = srv;
+    textureNum++;
 }
 
 void Material::AddSampler(unsigned int index, Microsoft::WRL::ComPtr<ID3D11SamplerState> samp)
