@@ -9,6 +9,8 @@
 #include "GameEntity.h"
 #include "Camera.h"
 #include "Material.h"
+#include <d3d11shadertracing.h>
+#include <WICTextureLoader.h>
 
 class Game
 {
@@ -32,6 +34,11 @@ private:
 	void CreateGeometry();
 	void LoadVertexShader(ID3DBlob* vertexShaderBlob);
 	void LoadPixelShader(ID3DBlob* vertexShaderBlob);
+	void FillAndBindNextConstantBuffer(
+		void* data,
+		unsigned int dataSizeInBytes,
+		D3D11_SHADER_TYPE shaderType,
+		unsigned int registerSlot);
 
 	void ImguiUpdateHelper(float deltaTime);
 
@@ -58,6 +65,15 @@ private:
 	Microsoft::WRL::ComPtr<ID3D11Buffer> vertexConstantBuffer;
 	Microsoft::WRL::ComPtr<ID3D11Buffer> pixelConstantBuffer;
 
+	// The D3D11.1 version of the Context object
+	Microsoft::WRL::ComPtr<ID3D11DeviceContext1> Context1;
+	// The one and only very large constant buffer (our GPU memory "heap")
+	Microsoft::WRL::ComPtr<ID3D11Buffer> ConstantBufferHeap;
+	// Size of the constant buffer heap (measured in bytes)
+	unsigned int cbHeapSizeInBytes;
+	// Position of the next unused portion of the heap
+	unsigned int cbHeapOffsetInBytes;
+
 	// Shaders and shader-related constructs
 	std::vector<Microsoft::WRL::ComPtr<ID3D11PixelShader>> pixelShaders;
 	std::vector<Microsoft::WRL::ComPtr<ID3D11VertexShader>> vertexShaders;
@@ -68,5 +84,7 @@ private:
 	std::vector<DirectX::XMFLOAT3> entityTransformValues;
 	std::vector<std::shared_ptr<Camera>> cams;
 	int activeCam;
+
+	
 };
 

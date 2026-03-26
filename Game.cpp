@@ -34,6 +34,21 @@ Game::Game()
 	CreateMaterials();
 	CreateGeometry();
 
+	//Setup ring buffer
+	Graphics::Context->QueryInterface<ID3D11DeviceContext1>(Context1.GetAddressOf());
+	cbHeapOffsetInBytes = 0;
+	cbHeapSizeInBytes = 1000 * 256;
+	cbHeapSizeInBytes = (cbHeapSizeInBytes + 255) / 256 * 256;
+
+	D3D11_BUFFER_DESC rcbDesc = {}; // Sets struct to all zeros
+	rcbDesc.BindFlags = D3D11_BIND_CONSTANT_BUFFER;
+	rcbDesc.ByteWidth = cbHeapSizeInBytes;
+	rcbDesc.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
+	rcbDesc.Usage = D3D11_USAGE_DYNAMIC;
+	Graphics::Device->CreateBuffer(&rcbDesc, 0, ConstantBufferHeap.GetAddressOf());
+
+
+
 	//add constant buffer
 	// Describe the constant buffer
 	D3D11_BUFFER_DESC vcbDesc = {}; // Sets struct to all zeros
@@ -132,6 +147,38 @@ void Game::LoadPixelShader(ID3DBlob* pixelShaderBlob)
 	pixelShaders.push_back(pixelShader);
 }
 
+void Game::FillAndBindNextConstantBuffer(void* data, unsigned int dataSizeInBytes, D3D11_SHADER_TYPE shaderType, unsigned int registerSlot)
+{
+	unsigned int reservationSize = (dataSizeInBytes + 255) / 256 * 256;
+	if (cbHeapOffsetInBytes + reservationSize >= cbHeapSizeInBytes) {
+		cbHeapOffsetInBytes = 0;
+	}
+
+	D3D11_MAPPED_SUBRESOURCE map{};
+	Graphics::Context->Map(
+		ConstantBufferHeap.Get(),
+		0,
+		D3D11_MAP_WRITE_NO_OVERWRITE,
+		0,
+		&map);
+	void* uploadAddress = reinterpret_cast<void*>((UINT64)map.pData + cbHeapOffsetInBytes);
+	memcpy(uploadAddress, data, dataSizeInBytes);
+	Graphics::Context->Unmap(ConstantBufferHeap.Get(), 0);
+
+	unsigned int firstConstant = cbHeapOffsetInBytes / 16;
+	unsigned int numConstants = reservationSize / 16;
+
+	if (shaderType == D3D11_VERTEX_SHADER) {
+		Context1->VSSetConstantBuffers1(registerSlot, 1, ConstantBufferHeap.GetAddressOf(), &firstConstant, &numConstants);
+	}
+	else if (shaderType == D3D11_PIXEL_SHADER) {
+		Context1->PSSetConstantBuffers1(registerSlot, 1, ConstantBufferHeap.GetAddressOf(), &firstConstant, &numConstants);
+	}
+
+	cbHeapOffsetInBytes += reservationSize;
+
+}
+
 
 // --------------------------------------------------------
 // Loads shaders from compiled shader object (.cso) files
@@ -162,12 +209,14 @@ void Game::LoadShaders()
 					// Address of the ID3D11PixelShader pointer
 		D3DReadFileToBlob(FixPath(L"PixelShader.cso").c_str(), &pixelShaderBlob);
 		LoadPixelShader(pixelShaderBlob);
-		D3DReadFileToBlob(FixPath(L"DebugUVsPS.cso").c_str(), &pixelShaderBlob);
+		D3DReadFileToBlob(FixPath(L"ComboShader.cso").c_str(), &pixelShaderBlob);
 		LoadPixelShader(pixelShaderBlob);
-		D3DReadFileToBlob(FixPath(L"DebugNormalsPS.cso").c_str(), &pixelShaderBlob);
-		LoadPixelShader(pixelShaderBlob);
-		D3DReadFileToBlob(FixPath(L"CustomPS.cso").c_str(), &pixelShaderBlob);
-		LoadPixelShader(pixelShaderBlob);
+		//D3DReadFileToBlob(FixPath(L"DebugUVsPS.cso").c_str(), &pixelShaderBlob);
+		//LoadPixelShader(pixelShaderBlob);
+		//D3DReadFileToBlob(FixPath(L"DebugNormalsPS.cso").c_str(), &pixelShaderBlob);
+		//LoadPixelShader(pixelShaderBlob);
+		//D3DReadFileToBlob(FixPath(L"CustomPS.cso").c_str(), &pixelShaderBlob);
+		//LoadPixelShader(pixelShaderBlob);
 
 		D3DReadFileToBlob(FixPath(L"VertexShader.cso").c_str(), &vertexShaderBlob);
 		LoadVertexShader(vertexShaderBlob);
@@ -213,19 +262,48 @@ void Game::LoadShaders()
 
 void Game::CreateMaterials()
 {
+	//Load Textures
+	Microsoft::WRL::ComPtr<ID3D11ShaderResourceView> srv1;
+	CreateWICTextureFromFile(
+		Graphics::Device.Get(),
+		Graphics::Context.Get(),
+		FixPath(L"../../Assets/Textures/Wood095_1K-PNG/Wood095_1K-PNG_Color.png").c_str(),
+		0,
+		srv1.GetAddressOf());
+
+	Microsoft::WRL::ComPtr<ID3D11ShaderResourceView> srv2;
+	CreateWICTextureFromFile(
+		Graphics::Device.Get(),
+		Graphics::Context.Get(),
+		FixPath(L"../../Assets/Textures/Grass005_1K-PNG/Grass005_1K-PNG_Color.png").c_str(),
+		0,
+		srv2.GetAddressOf());
+
+	//Sampler State
+	Microsoft::WRL::ComPtr<ID3D11SamplerState> samplerState;
+	D3D11_SAMPLER_DESC sampleDesc = {};
+	sampleDesc.AddressU = D3D11_TEXTURE_ADDRESS_WRAP;
+	sampleDesc.AddressV = D3D11_TEXTURE_ADDRESS_WRAP;
+	sampleDesc.AddressW = D3D11_TEXTURE_ADDRESS_WRAP;
+	sampleDesc.Filter = D3D11_FILTER_ANISOTROPIC;
+	sampleDesc.MaxAnisotropy = 4;
+	sampleDesc.MaxLOD = D3D11_FLOAT32_MAX;
+	Graphics::Device->CreateSamplerState(&sampleDesc, samplerState.GetAddressOf());
+
+
 	//Create materials
 	XMFLOAT4 col1 = XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f);
 	mats.push_back(std::make_shared<Material>(col1, vertexShaders[0], pixelShaders[0]));
+	mats.push_back(std::make_shared<Material>(col1, vertexShaders[0], pixelShaders[0]));
 	mats.push_back(std::make_shared<Material>(col1, vertexShaders[0], pixelShaders[1]));
-	mats.push_back(std::make_shared<Material>(col1, vertexShaders[0], pixelShaders[2]));
-	mats.push_back(std::make_shared<Material>(col1, vertexShaders[0], pixelShaders[3]));
-
-	XMFLOAT4 col2 = XMFLOAT4(1.0f, 0.0f, 0.0f, 1.0f);
-	mats.push_back(std::make_shared<Material>(col2, vertexShaders[0], pixelShaders[0]));
-	mats.push_back(std::make_shared<Material>(col2, vertexShaders[0], pixelShaders[1]));
-	mats.push_back(std::make_shared<Material>(col2, vertexShaders[0], pixelShaders[2]));
-	mats.push_back(std::make_shared<Material>(col2, vertexShaders[0], pixelShaders[3]));
-
+	
+	for (auto mat : mats) {
+		mat->AddSampler(0, samplerState);
+	} 
+	mats[0]->AddTextureSRV(0, srv1);
+	mats[1]->AddTextureSRV(0, srv2);
+	mats[2]->AddTextureSRV(0, srv1);
+	mats[2]->AddTextureSRV(1, srv2);
 	//XMFLOAT4 col3 = XMFLOAT4(1.0f, 0.0f, 0.0f, 1.0f);
 	//mats.push_back(std::make_shared<Material>(col3, vertexShader, pixelShader));
 
@@ -244,16 +322,10 @@ void Game::CreateGeometry()
 	XMFLOAT4 blue = XMFLOAT4(0.0f, 0.0f, 1.0f, 1.0f);
 
 	//Create meshes
-	std::shared_ptr mesh1 = std::make_shared<Mesh>(FixPath("../../Assets/Meshes/helix.obj").c_str());
+	std::shared_ptr mesh1 = std::make_shared<Mesh>(FixPath("../../Assets/Meshes/cube.obj").c_str());
 	entities.push_back(std::make_shared<GameEntity>(mesh1, mats[0]));
 	entities.push_back(std::make_shared<GameEntity>(mesh1, mats[1]));
 	entities.push_back(std::make_shared<GameEntity>(mesh1, mats[2]));
-	entities.push_back(std::make_shared<GameEntity>(mesh1, mats[3]));
-	std::shared_ptr mesh2 = std::make_shared<Mesh>(FixPath("../../Assets/Meshes/cube.obj").c_str());
-	entities.push_back(std::make_shared<GameEntity>(mesh2, mats[4]));
-	entities.push_back(std::make_shared<GameEntity>(mesh2, mats[5]));
-	entities.push_back(std::make_shared<GameEntity>(mesh2, mats[6]));
-	entities.push_back(std::make_shared<GameEntity>(mesh2, mats[7]));
 
 }
 
@@ -332,6 +404,17 @@ void Game::BuildUI() {
 		ImGui::PopID();
 	}*/
 
+	if (ImGui::CollapsingHeader("Entity Data")) {
+		for (int i = 0; i < entities.size(); i++) {
+			ImGui::PushID(i + 1);
+
+			
+			//ImGui::ColorPicker4("Color Tint", );
+
+			ImGui::PopID();
+		}
+	}
+
 	ImGui::End();
 }
 
@@ -361,7 +444,7 @@ void Game::Update(float deltaTime, float totalTime)
 	//entities[2]->GetTransform()->SetPosition(sin(totalTime), 0, 0);
 	//entities[4]->GetTransform()->SetRotation(0, 0, totalTime);
 	for (int i = 0; i < entities.size(); i++) {
-		entities[i]->GetTransform()->SetPosition((float) i * 3 - 10.5f, 0, 0);
+		entities[i]->GetTransform()->SetPosition((float) i * 3 - 3.0f, 0, 0);
 	}
 	cams[activeCam]->Update(deltaTime);
 
@@ -397,19 +480,24 @@ void Game::Draw(float deltaTime, float totalTime)
 	{
 		for (std::shared_ptr<GameEntity> i : entities) {
 			vsData.world = i->GetTransform()->GetWorldMatrix();
-			D3D11_MAPPED_SUBRESOURCE mappedBufferV = {};
-			Graphics::Context->Map(vertexConstantBuffer.Get(), 0, D3D11_MAP_WRITE_DISCARD, 0, &mappedBufferV);
-			memcpy(mappedBufferV.pData, &vsData, sizeof(vsData));
-			Graphics::Context->Unmap(vertexConstantBuffer.Get(), 0);
-			Graphics::Context->VSSetConstantBuffers(0, 1, vertexConstantBuffer.GetAddressOf());
+			FillAndBindNextConstantBuffer(
+				&vsData,
+				sizeof(VertexBufferStruct),
+				D3D11_VERTEX_SHADER,
+				0
+			);
 
 			psData.colorTint = i->GetMat()->GetColorTint();
-			D3D11_MAPPED_SUBRESOURCE mappedBufferP = {};
-			Graphics::Context->Map(pixelConstantBuffer.Get(), 0, D3D11_MAP_WRITE_DISCARD, 0, &mappedBufferP);
-			memcpy(mappedBufferP.pData, &psData, sizeof(psData));
-			Graphics::Context->Unmap(pixelConstantBuffer.Get(), 0);
-			Graphics::Context->PSSetConstantBuffers(0, 1, pixelConstantBuffer.GetAddressOf());
-		
+			psData.uvScale = i->GetMat()->GetUVScale();
+			psData.uvOffset = i->GetMat()->GetUVOffset();
+			FillAndBindNextConstantBuffer(
+				&psData,
+				sizeof(PixelBufferStruct),
+				D3D11_PIXEL_SHADER,
+				0
+			);
+
+			i->GetMat()->BindTexturesAndSamplers();
 			i->Draw();
 		}
 	}
