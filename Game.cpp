@@ -326,7 +326,7 @@ void Game::CreateGeometry()
 	std::shared_ptr mesh1 = std::make_shared<Mesh>(FixPath("../../Assets/Meshes/sphere.obj").c_str());
 	entities.push_back(std::make_shared<GameEntity>(mesh1, mats[0]));
 	entities.push_back(std::make_shared<GameEntity>(mesh1, mats[1]));
-	entities.push_back(std::make_shared<GameEntity>(mesh1, mats[2]));
+	//entities.push_back(std::make_shared<GameEntity>(mesh1, mats[2]));
 
 }
 

@@ -58,8 +58,8 @@ void Camera::Update(float dt)
     //Mouse movement
     if (Input::MouseLeftDown())
     {
-        float cursorMovementX = Input::GetMouseXDelta();
-        float cursorMovementY = Input::GetMouseYDelta();
+        float cursorMovementX = (float) Input::GetMouseXDelta();
+        float cursorMovementY = (float) Input::GetMouseYDelta();
         float deltaX = cursorMovementX * mouseLookSpeed;
         float deltaY = cursorMovementY * mouseLookSpeed;
         transform->Rotate(deltaY, deltaX, 0);
