@@ -11,6 +11,7 @@
 #include "Material.h"
 #include <d3d11shadertracing.h>
 #include <WICTextureLoader.h>
+#include "Light.h"
 
 class Game
 {
@@ -41,6 +42,8 @@ private:
 		unsigned int registerSlot);
 
 	void ImguiUpdateHelper(float deltaTime);
+
+	void InitializeLights();
 
 	void BuildUI();
 
@@ -85,6 +88,6 @@ private:
 	std::vector<std::shared_ptr<Camera>> cams;
 	int activeCam;
 
-	
+	std::vector<Light> lights;
 };
 

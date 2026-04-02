@@ -33,6 +33,7 @@ Game::Game()
 	LoadShaders();
 	CreateMaterials();
 	CreateGeometry();
+	InitializeLights();
 
 	//Setup ring buffer
 	Graphics::Context->QueryInterface<ID3D11DeviceContext1>(Context1.GetAddressOf());
@@ -322,7 +323,7 @@ void Game::CreateGeometry()
 	XMFLOAT4 blue = XMFLOAT4(0.0f, 0.0f, 1.0f, 1.0f);
 
 	//Create meshes
-	std::shared_ptr mesh1 = std::make_shared<Mesh>(FixPath("../../Assets/Meshes/cube.obj").c_str());
+	std::shared_ptr mesh1 = std::make_shared<Mesh>(FixPath("../../Assets/Meshes/sphere.obj").c_str());
 	entities.push_back(std::make_shared<GameEntity>(mesh1, mats[0]));
 	entities.push_back(std::make_shared<GameEntity>(mesh1, mats[1]));
 	entities.push_back(std::make_shared<GameEntity>(mesh1, mats[2]));
@@ -343,6 +344,50 @@ void Game::ImguiUpdateHelper(float deltaTime) {
 	Input::SetKeyboardCapture(io.WantCaptureKeyboard);
 	Input::SetMouseCapture(io.WantCaptureMouse);
 }
+
+void Game::InitializeLights() {
+	Light light1 = {};
+	light1.type = LIGHT_TYPE_DIRECTIONAL;
+	light1.direction = XMFLOAT3(-1, 0, 0);
+	light1.color = XMFLOAT3(1, 0, 0);
+	light1.intensity = 1.0f;
+
+	Light light2 = {};
+	light2.type = LIGHT_TYPE_DIRECTIONAL;
+	light2.direction = XMFLOAT3(0, -1, 0);
+	light2.color = XMFLOAT3(0, 1, 0);
+	light2.intensity = 1.0f;
+
+	Light light3 = {};
+	light3.type = LIGHT_TYPE_DIRECTIONAL;
+	light3.direction = XMFLOAT3(0, 0, -1);
+	light3.color = XMFLOAT3(0, 0, 1);
+	light3.intensity = 1.0f;
+
+	Light light4 = {};
+	light4.type = LIGHT_TYPE_POINT;
+	light4.position = XMFLOAT3(0, 1.5f, 0);
+	light4.color = XMFLOAT3(1,1,1);
+	light4.range = 5;
+	light4.intensity = 1.0f;
+
+	Light light5 = {};
+	light5.type = LIGHT_TYPE_SPOT;
+	light5.position = XMFLOAT3(5, 0, 0);
+	light5.direction = XMFLOAT3(1, 0, 0);
+	light5.color = XMFLOAT3(1, 1, 0);
+	light5.range = 100;
+	light5.spotInnerAngle = 0.05f;
+	light5.spotOuterAngle = 0.1f;
+	light5.intensity = 1.0f;
+
+	lights.push_back(light1);
+	lights.push_back(light2);
+	lights.push_back(light3);
+	lights.push_back(light4);
+	lights.push_back(light5);
+}
+
 
 /// <summary>
 /// Creates the GUI
@@ -438,6 +483,26 @@ void Game::BuildUI() {
 		}
 	}
 
+	if (ImGui::CollapsingHeader("Light Data")) {
+		for (int i = 0; i < lights.size(); i++) {
+			ImGui::PushID(i + 1);
+			ImGui::Text("Light #%d:", i + 1);
+			//Color
+			XMFLOAT3 lightColor = lights[i].color;
+			if (ImGui::ColorEdit3("Color", &lightColor.x)) {
+				lights[i].color = lightColor;
+			}
+			//Intensity
+
+			float intensity = lights[i].intensity;
+			if (ImGui::DragFloat("Intensity", &intensity, 0.05f)) {
+				lights[i].intensity = intensity;
+			}
+
+			ImGui::PopID();
+		}
+	}
+
 	ImGui::End();
 }
 
@@ -468,6 +533,15 @@ void Game::Update(float deltaTime, float totalTime)
 	//entities[4]->GetTransform()->SetRotation(0, 0, totalTime);
 	for (int i = 0; i < entities.size(); i++) {
 		entities[i]->GetTransform()->SetPosition((float) i * 3 - 3.0f, 0, 0);
+		switch (i % 3) {
+		case 0:
+			entities[i]->GetTransform()->SetRotation(totalTime, 0, 0); break;
+		case 1:
+			entities[i]->GetTransform()->SetRotation(0, totalTime, 0); break;
+		case 2:
+			entities[i]->GetTransform()->SetRotation(0, 0, totalTime);
+		}
+		
 	}
 	cams[activeCam]->Update(deltaTime);
 
@@ -493,7 +567,7 @@ void Game::Draw(float deltaTime, float totalTime)
 		//Set up camera
 		vsData.view = cams[activeCam]->getViewMatrix();
 		vsData.projection = cams[activeCam]->getProjectionMatrix();
-	
+		
 		vsData.time = totalTime;
 	}	
 
@@ -503,6 +577,7 @@ void Game::Draw(float deltaTime, float totalTime)
 	{
 		for (std::shared_ptr<GameEntity> i : entities) {
 			vsData.world = i->GetTransform()->GetWorldMatrix();
+			vsData.worldInvTranspose = i->GetTransform()->GetWorldInverseTransposeMatrix();
 			FillAndBindNextConstantBuffer(
 				&vsData,
 				sizeof(VertexBufferStruct),
@@ -513,6 +588,14 @@ void Game::Draw(float deltaTime, float totalTime)
 			psData.colorTint = i->GetMat()->GetColorTint();
 			psData.uvScale = i->GetMat()->GetUVScale();
 			psData.uvOffset = i->GetMat()->GetUVOffset();
+			psData.cameraPosition = cams[activeCam]->GetTransform()->GetPosition();
+			psData.ambientColor = DirectX::XMFLOAT4(
+				bgColor[0] * 0.3f,
+				bgColor[1] * 0.3f,
+				bgColor[2] * 0.3f,
+				bgColor[3] * 0.3f
+			);
+			memcpy(&psData.lights, &lights[0], sizeof(Light) * (int)lights.size());
 			FillAndBindNextConstantBuffer(
 				&psData,
 				sizeof(PixelBufferStruct),
