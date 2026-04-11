@@ -18,6 +18,7 @@ cbuffer ExternalData : register(b0)
 }
 
 Texture2D SurfaceTexture : register(t0);
+Texture2D NormalTexture : register(t1);
 SamplerState BasicSampler : register(s0);
 
 
@@ -39,9 +40,15 @@ float4 main(VertexToPixel input) : SV_TARGET
 	//   of the triangle we're rendering
     float2 uv = input.uv * uvScale + uvOffset;
     float4 surfaceColor = SurfaceTexture.Sample(BasicSampler, uv);
+    float3 normalFromTexture = NormalTexture.Sample(BasicSampler, uv).rgb;
+    //input.normal = normalize(input.normal);
     
-    input.normal = normalize(input.normal);
-    
+    float3 unpackedNormal = normalize((normalFromTexture * 2.0f) - 1.0f);
+    float3 N = normalize(input.normal);
+    float3 T = normalize(input.tangent - dot(input.tangent, N) * N);
+    float3 B = cross(T, N);
+    float3x3 TBN = float3x3(T, B, N);
+    input.normal = normalize(mul(unpackedNormal, TBN));
     
     float4 ambientTerm = ambientColor * surfaceColor * colorTint;
     

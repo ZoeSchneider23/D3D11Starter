@@ -8,6 +8,7 @@ struct VertexBufferStruct {
 	DirectX::XMFLOAT4X4 view;
 	DirectX::XMFLOAT4X4 projection;
 	DirectX::XMFLOAT4X4 worldInvTranspose;
+	DirectX::XMFLOAT3 tangent;
 	float time;
 };
 
@@ -19,4 +20,9 @@ struct PixelBufferStruct {
 	float padding;
 	DirectX::XMFLOAT4 ambientColor;
 	Light lights[16];
+};
+
+struct SkyVertexBufferStruct {
+	DirectX::XMFLOAT4X4 view;
+	DirectX::XMFLOAT4X4 projection;
 };

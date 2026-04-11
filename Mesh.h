@@ -16,6 +16,7 @@ private:
 	Microsoft::WRL::ComPtr<ID3D11Buffer> indexBuffer;
 	int vertexCount;
 	int indexCount;
+	void CalculateTangents(Vertex* verts, int numVerts, unsigned int* indices, int numIndices);
 	void CreateBuffers(Vertex* vertData, unsigned int vertNum, unsigned int* indexData, unsigned int indexNum);
 public:
 	Mesh(Vertex *vertData, unsigned int vertNum, unsigned int *indexData, unsigned int indexNum);
@@ -26,4 +27,4 @@ public:
 	int getIndexCount();
 	int getVertexCount();
 	void Draw();
-};
+	};

@@ -17,6 +17,7 @@ struct VertexToPixel
     float3 normal : NORMAL;
     float time : TIME;
     float3 worldPosition : POSITION;
+    float3 tangent : TANGENT;
 };
 
 struct VertexShaderInput
@@ -30,6 +31,7 @@ struct VertexShaderInput
     float2 uv : TEXCOORD;
     float3 normal : NORMAL;
     float time : TIME;
+    float3 tangent : TANGENT;
 };
 
 struct Light
@@ -43,6 +45,12 @@ struct Light
     float spotInnerAngle;
     float spotOuterAngle;
     float2 padding;
+};
+
+struct SkyVertexToPixel
+{
+    float4 position : SV_POSITION;
+    float3 sampleDir : DIRECTION;
 };
 
 
@@ -65,6 +73,8 @@ float4 DirectionalLight(VertexToPixel input, Light directionalLight, float4 surf
     float RdotV = saturate(dot(refl, dirToCamera));
     float3 specularTerm =
         pow(RdotV, 128) * directionalLight.color * directionalLight.intensity * surfaceColor.rgb;
+    specularTerm *= any(diffuseTerm);
+
     return diffuseTerm.rgbb + specularTerm.rgbb;
 }
 
@@ -81,6 +91,7 @@ float4 PointLight(VertexToPixel input, Light light, float4 surfaceColor, float3 
     float RdotV = saturate(dot(refl, dirToCamera));
     float3 specularTerm =
         pow(RdotV, 128) * light.color * light.intensity * surfaceColor.rgb;
+    specularTerm *= any(diffuseTerm);
     
     return (diffuseTerm.rgbb + specularTerm.rgbb) * Attenuate(light, input.worldPosition);
 }

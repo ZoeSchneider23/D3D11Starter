@@ -212,6 +212,8 @@ void Game::LoadShaders()
 		LoadPixelShader(pixelShaderBlob);
 		D3DReadFileToBlob(FixPath(L"ComboShader.cso").c_str(), &pixelShaderBlob);
 		LoadPixelShader(pixelShaderBlob);
+		D3DReadFileToBlob(FixPath(L"SkyPixelShader.cso").c_str(), &pixelShaderBlob);
+		LoadPixelShader(pixelShaderBlob);
 		//D3DReadFileToBlob(FixPath(L"DebugUVsPS.cso").c_str(), &pixelShaderBlob);
 		//LoadPixelShader(pixelShaderBlob);
 		//D3DReadFileToBlob(FixPath(L"DebugNormalsPS.cso").c_str(), &pixelShaderBlob);
@@ -220,6 +222,8 @@ void Game::LoadShaders()
 		//LoadPixelShader(pixelShaderBlob);
 
 		D3DReadFileToBlob(FixPath(L"VertexShader.cso").c_str(), &vertexShaderBlob);
+		LoadVertexShader(vertexShaderBlob);
+		D3DReadFileToBlob(FixPath(L"SkyVertexShader.cso").c_str(), &vertexShaderBlob);
 		LoadVertexShader(vertexShaderBlob);
 					// The address of the ID3D11VertexShader pointer
 	}
@@ -230,7 +234,7 @@ void Game::LoadShaders()
 	//  - Doing this NOW because it requires a vertex shader's byte code to verify against!
 	//  - Luckily, we already have that loaded (the vertex shader blob above)
 	{
-		D3D11_INPUT_ELEMENT_DESC inputElements[4] = {};
+		D3D11_INPUT_ELEMENT_DESC inputElements[5] = {};
 
 		// Set up the first element - a position, which is 3 float values
 		inputElements[0].Format = DXGI_FORMAT_R32G32B32_FLOAT;				// Most formats are described as color channels; really it just means "Three 32-bit floats"
@@ -250,11 +254,14 @@ void Game::LoadShaders()
 		inputElements[3].SemanticName = "TIME";							// Match our vertex shader input!
 		inputElements[3].AlignedByteOffset = D3D11_APPEND_ALIGNED_ELEMENT;	// After the previous element
 
+		inputElements[4].Format = DXGI_FORMAT_R32G32B32_FLOAT;			// 4x 32-bit floats
+		inputElements[4].SemanticName = "TANGENT";							// Match our vertex shader input!
+		inputElements[4].AlignedByteOffset = D3D11_APPEND_ALIGNED_ELEMENT;	// After the previous element
 
 		// Create the input layout, verifying our description against actual shader code
 		Graphics::Device->CreateInputLayout(
 			inputElements,							// An array of descriptions
-			4,										// How many elements in that array?
+			5,										// How many elements in that array?
 			vertexShaderBlob->GetBufferPointer(),	// Pointer to the code of a shader that uses this layout
 			vertexShaderBlob->GetBufferSize(),
 			inputLayout.GetAddressOf());			// Address of the resulting ID3D11InputLayout pointer
@@ -264,24 +271,39 @@ void Game::LoadShaders()
 void Game::CreateMaterials()
 {
 	//Load Textures
-	Microsoft::WRL::ComPtr<ID3D11ShaderResourceView> srv1;
+	Microsoft::WRL::ComPtr<ID3D11ShaderResourceView> srvWoodDiffuse;
 	CreateWICTextureFromFile(
 		Graphics::Device.Get(),
 		Graphics::Context.Get(),
 		FixPath(L"../../Assets/Textures/Wood095_1K-PNG/Wood095_1K-PNG_Color.png").c_str(),
 		0,
-		srv1.GetAddressOf());
+		srvWoodDiffuse.GetAddressOf());
 
-	Microsoft::WRL::ComPtr<ID3D11ShaderResourceView> srv2;
+	Microsoft::WRL::ComPtr<ID3D11ShaderResourceView> srvGrassDiffuse;
 	CreateWICTextureFromFile(
 		Graphics::Device.Get(),
 		Graphics::Context.Get(),
 		FixPath(L"../../Assets/Textures/Grass005_1K-PNG/Grass005_1K-PNG_Color.png").c_str(),
 		0,
-		srv2.GetAddressOf());
+		srvGrassDiffuse.GetAddressOf());
+	//Load normal maps
+	Microsoft::WRL::ComPtr<ID3D11ShaderResourceView> srvWoodNormal;
+	CreateWICTextureFromFile(
+		Graphics::Device.Get(),
+		Graphics::Context.Get(),
+		FixPath(L"../../Assets/Textures/Wood095_1K-PNG/Wood095_1K-PNG_NormalDX.png").c_str(),
+		0,
+		srvWoodNormal.GetAddressOf());
+
+	Microsoft::WRL::ComPtr<ID3D11ShaderResourceView> srvGrassNormal;
+	CreateWICTextureFromFile(
+		Graphics::Device.Get(),
+		Graphics::Context.Get(),
+		FixPath(L"../../Assets/Textures/Grass005_1K-PNG/Grass005_1K-PNG_NormalDX.png").c_str(),
+		0,
+		srvGrassNormal.GetAddressOf());
 
 	//Sampler State
-	Microsoft::WRL::ComPtr<ID3D11SamplerState> samplerState;
 	D3D11_SAMPLER_DESC sampleDesc = {};
 	sampleDesc.AddressU = D3D11_TEXTURE_ADDRESS_WRAP;
 	sampleDesc.AddressV = D3D11_TEXTURE_ADDRESS_WRAP;
@@ -296,15 +318,15 @@ void Game::CreateMaterials()
 	XMFLOAT4 col1 = XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f);
 	mats.push_back(std::make_shared<Material>(col1, vertexShaders[0], pixelShaders[0]));
 	mats.push_back(std::make_shared<Material>(col1, vertexShaders[0], pixelShaders[0]));
-	mats.push_back(std::make_shared<Material>(col1, vertexShaders[0], pixelShaders[1]));
 	
 	for (auto mat : mats) {
 		mat->AddSampler(0, samplerState);
 	} 
-	mats[0]->AddTextureSRV(0, srv1);
-	mats[1]->AddTextureSRV(0, srv2);
-	mats[2]->AddTextureSRV(0, srv1);
-	mats[2]->AddTextureSRV(1, srv2);
+	mats[0]->AddTextureSRV(0, srvWoodDiffuse);
+	mats[1]->AddTextureSRV(0, srvGrassDiffuse);
+
+	mats[0]->AddTextureSRV(1, srvWoodNormal);
+	mats[1]->AddTextureSRV(1, srvGrassNormal);
 	//XMFLOAT4 col3 = XMFLOAT4(1.0f, 0.0f, 0.0f, 1.0f);
 	//mats.push_back(std::make_shared<Material>(col3, vertexShader, pixelShader));
 
@@ -323,11 +345,25 @@ void Game::CreateGeometry()
 	XMFLOAT4 blue = XMFLOAT4(0.0f, 0.0f, 1.0f, 1.0f);
 
 	//Create meshes
+	std::shared_ptr meshCube = std::make_shared<Mesh>(FixPath("../../Assets/Meshes/cube.obj").c_str());
+
 	std::shared_ptr mesh1 = std::make_shared<Mesh>(FixPath("../../Assets/Meshes/sphere.obj").c_str());
 	entities.push_back(std::make_shared<GameEntity>(mesh1, mats[0]));
 	entities.push_back(std::make_shared<GameEntity>(mesh1, mats[1]));
 	//entities.push_back(std::make_shared<GameEntity>(mesh1, mats[2]));
 
+	//Create sky
+	sky = Sky(
+		meshCube, 
+		samplerState, 
+		pixelShaders[2],
+		vertexShaders[1],
+		FixPath(L"../../Assets/Textures/Skies/Clouds Blue/back.png").c_str(), 
+		FixPath(L"../../Assets/Textures/Skies/Clouds Blue/front.png").c_str(), 
+		FixPath(L"../../Assets/Textures/Skies/Clouds Blue/up.png").c_str(), 
+		FixPath(L"../../Assets/Textures/Skies/Clouds Blue/down.png").c_str(), 
+		FixPath(L"../../Assets/Textures/Skies/Clouds Blue/right.png").c_str(), 
+		FixPath(L"../../Assets/Textures/Skies/Clouds Blue/left.png").c_str());
 }
 
 void Game::ImguiUpdateHelper(float deltaTime) {
@@ -349,43 +385,43 @@ void Game::InitializeLights() {
 	Light light1 = {};
 	light1.type = LIGHT_TYPE_DIRECTIONAL;
 	light1.direction = XMFLOAT3(-1, 0, 0);
-	light1.color = XMFLOAT3(1, 0, 0);
+	light1.color = XMFLOAT3(1, 1, 1);
 	light1.intensity = 1.0f;
 
-	Light light2 = {};
-	light2.type = LIGHT_TYPE_DIRECTIONAL;
-	light2.direction = XMFLOAT3(0, -1, 0);
-	light2.color = XMFLOAT3(0, 1, 0);
-	light2.intensity = 1.0f;
-
-	Light light3 = {};
-	light3.type = LIGHT_TYPE_DIRECTIONAL;
-	light3.direction = XMFLOAT3(0, 0, -1);
-	light3.color = XMFLOAT3(0, 0, 1);
-	light3.intensity = 1.0f;
-
-	Light light4 = {};
-	light4.type = LIGHT_TYPE_POINT;
-	light4.position = XMFLOAT3(0, 1.5f, 0);
-	light4.color = XMFLOAT3(1,1,1);
-	light4.range = 5;
-	light4.intensity = 1.0f;
-
-	Light light5 = {};
-	light5.type = LIGHT_TYPE_SPOT;
-	light5.position = XMFLOAT3(5, 0, 0);
-	light5.direction = XMFLOAT3(1, 0, 0);
-	light5.color = XMFLOAT3(1, 1, 0);
-	light5.range = 100;
-	light5.spotInnerAngle = 0.05f;
-	light5.spotOuterAngle = 0.1f;
-	light5.intensity = 1.0f;
-
+	//Light light2 = {};
+	//light2.type = LIGHT_TYPE_DIRECTIONAL;
+	//light2.direction = XMFLOAT3(0, -1, 0);
+	//light2.color = XMFLOAT3(0, 1, 0);
+	//light2.intensity = 1.0f;
+	//
+	//Light light3 = {};
+	//light3.type = LIGHT_TYPE_DIRECTIONAL;
+	//light3.direction = XMFLOAT3(0, 0, -1);
+	//light3.color = XMFLOAT3(0, 0, 1);
+	//light3.intensity = 1.0f;
+	//
+	//Light light4 = {};
+	//light4.type = LIGHT_TYPE_POINT;
+	//light4.position = XMFLOAT3(0, 1.5f, 0);
+	//light4.color = XMFLOAT3(1,1,1);
+	//light4.range = 5;
+	//light4.intensity = 1.0f;
+	//
+	//Light light5 = {};
+	//light5.type = LIGHT_TYPE_SPOT;
+	//light5.position = XMFLOAT3(5, 0, 0);
+	//light5.direction = XMFLOAT3(1, 0, 0);
+	//light5.color = XMFLOAT3(1, 1, 0);
+	//light5.range = 100;
+	//light5.spotInnerAngle = 0.05f;
+	//light5.spotOuterAngle = 0.1f;
+	//light5.intensity = 1.0f;
+	//
 	lights.push_back(light1);
-	lights.push_back(light2);
-	lights.push_back(light3);
-	lights.push_back(light4);
-	lights.push_back(light5);
+	//lights.push_back(light2);
+	//lights.push_back(light3);
+	//lights.push_back(light4);
+	//lights.push_back(light5);
 }
 
 
@@ -399,7 +435,7 @@ void Game::BuildUI() {
 	ImGui::Text("Window Resolution: %dx%d", Window::Width(), Window::Height());
 
 	//BG color picker
-	ImGui::ColorEdit4("Background Color", bgColor);
+	ImGui::ColorEdit4("Ambient Color", bgColor);
 
 	//if (ImGui::CollapsingHeader("Mesh Data")) {
 	//	for (int i = 0; i < meshes.size(); i++) {
@@ -529,17 +565,18 @@ void Game::Update(float deltaTime, float totalTime)
 	ImguiUpdateHelper(deltaTime);
 	BuildUI();
 	//move objects;
+	// 
 	//entities[2]->GetTransform()->SetPosition(sin(totalTime), 0, 0);
 	//entities[4]->GetTransform()->SetRotation(0, 0, totalTime);
 	for (int i = 0; i < entities.size(); i++) {
 		entities[i]->GetTransform()->SetPosition((float) i * 3 - 3.0f, 0, 0);
 		switch (i % 3) {
 		case 0:
-			entities[i]->GetTransform()->SetRotation(totalTime, 0, 0); break;
+			entities[i]->GetTransform()->SetRotation(totalTime / 5, 0, 0); break;
 		case 1:
-			entities[i]->GetTransform()->SetRotation(0, totalTime, 0); break;
+			entities[i]->GetTransform()->SetRotation(0, totalTime / 5, 0); break;
 		case 2:
-			entities[i]->GetTransform()->SetRotation(0, 0, totalTime);
+			entities[i]->GetTransform()->SetRotation(0, 0, totalTime / 5);
 		}
 		
 	}
@@ -607,6 +644,16 @@ void Game::Draw(float deltaTime, float totalTime)
 			i->Draw();
 		}
 	}
+	//Draw Sky
+	skyVsData.view = vsData.view;
+	skyVsData.projection = vsData.projection;
+	FillAndBindNextConstantBuffer(
+		&skyVsData,
+		sizeof(SkyVertexBufferStruct),
+		D3D11_VERTEX_SHADER,
+		0
+	);
+	sky.Draw(cams[activeCam].get());
 
 	// Frame END
 	// - These should happen exactly ONCE PER FRAME

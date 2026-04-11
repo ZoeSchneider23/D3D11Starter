@@ -12,6 +12,7 @@
 #include <d3d11shadertracing.h>
 #include <WICTextureLoader.h>
 #include "Light.h"
+#include "Sky.h"
 
 class Game
 {
@@ -89,5 +90,9 @@ private:
 	int activeCam;
 
 	std::vector<Light> lights;
+	Sky sky;
+	SkyVertexBufferStruct skyVsData;
+	Microsoft::WRL::ComPtr<ID3D11SamplerState> samplerState;
+
 };
 
