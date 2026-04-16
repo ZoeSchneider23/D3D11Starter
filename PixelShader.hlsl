@@ -17,8 +17,10 @@ cbuffer ExternalData : register(b0)
     Light lights[5];
 }
 
-Texture2D SurfaceTexture : register(t0);
-Texture2D NormalTexture : register(t1);
+Texture2D Albedo : register(t0);
+Texture2D NormalMap : register(t1);
+Texture2D RoughnessMap : register(t2);
+Texture2D MetalnessMap : register(t3);
 SamplerState BasicSampler : register(s0);
 
 
@@ -34,15 +36,17 @@ SamplerState BasicSampler : register(s0);
 // --------------------------------------------------------
 float4 main(VertexToPixel input) : SV_TARGET
 {
-	// Just return the input color
-	// - This color (like most values passing through the rasterizer) is 
-	//   interpolated for each pixel between the corresponding vertices 
-	//   of the triangle we're rendering
+	//sample textures
     float2 uv = input.uv * uvScale + uvOffset;
-    float4 surfaceColor = SurfaceTexture.Sample(BasicSampler, uv);
-    float3 normalFromTexture = NormalTexture.Sample(BasicSampler, uv).rgb;
-    //input.normal = normalize(input.normal);
+    float4 surfaceColor = Albedo.Sample(BasicSampler, uv);
+    surfaceColor = pow(surfaceColor, 2.2);
+    float3 normalFromTexture = NormalMap.Sample(BasicSampler, uv).rgb;
+    float roughness = RoughnessMap.Sample(BasicSampler, input.uv).r;
+    float metalness = MetalnessMap.Sample(BasicSampler, input.uv).r;
+    float3 specularColor = lerp(0.04f, surfaceColor.rgb, metalness);
     
+    
+    //apply normal map
     float3 unpackedNormal = normalize((normalFromTexture * 2.0f) - 1.0f);
     float3 N = normalize(input.normal);
     float3 T = normalize(input.tangent - dot(input.tangent, N) * N);
@@ -50,7 +54,7 @@ float4 main(VertexToPixel input) : SV_TARGET
     float3x3 TBN = float3x3(T, B, N);
     input.normal = normalize(mul(unpackedNormal, TBN));
     
-    float4 ambientTerm = ambientColor * surfaceColor * colorTint;
+    //float4 ambientTerm = ambientColor * surfaceColor * colorTint * (1 - metalness);
     
     float4 lightTerm = float4(0, 0, 0, 0);
     for (int i = 0; i < 5; i++)
@@ -58,16 +62,17 @@ float4 main(VertexToPixel input) : SV_TARGET
         switch (lights[i].type)
         {
             case LIGHT_TYPE_DIRECTIONAL:
-                lightTerm += DirectionalLight(input, lights[i], surfaceColor, cameraPosition);
+                lightTerm += DirectionalLight(input, lights[i], surfaceColor, cameraPosition, roughness, metalness, specularColor);
                 break;
             case LIGHT_TYPE_POINT:
-                lightTerm += PointLight(input, lights[i], surfaceColor, cameraPosition);
+                lightTerm += PointLight(input, lights[i], surfaceColor, cameraPosition, roughness, metalness, specularColor);
                 break;
             case LIGHT_TYPE_SPOT:
-                lightTerm += SpotLight(input, lights[i], surfaceColor, cameraPosition);
+                lightTerm += SpotLight(input, lights[i], surfaceColor, cameraPosition, roughness, metalness, specularColor);
                 break;
 
         }
     }
-    return ambientTerm + lightTerm;
+    float4 finalColor = /*ambientTerm +*/ lightTerm;
+    return pow(finalColor, 1.0 / 2.2);
 }
