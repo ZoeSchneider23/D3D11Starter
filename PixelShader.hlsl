@@ -23,6 +23,7 @@ Texture2D RoughnessMap : register(t2);
 Texture2D MetalnessMap : register(t3);
 Texture2D ShadowMap : register(t4);
 SamplerState BasicSampler : register(s0);
+SamplerComparisonState ShadowSampler : register(s1);
 
 
 
@@ -43,10 +44,10 @@ float4 main(VertexToPixel input) : SV_TARGET
     shadowUV.y = 1 - shadowUV.y; // Flip the Y
 // Grab the distances we need: light-to-pixel and closest-surface
     float distToLight = input.shadowMapPos.z;
-    float distShadowMap = ShadowMap.Sample(BasicSampler, shadowUV).r;
-// For testing, just return black where there are shadows.
-    if (distShadowMap < distToLight)
-        return float4(0, 0, 0, 1);
+    float shadowAmount = ShadowMap.SampleCmpLevelZero(
+        ShadowSampler,
+        shadowUV,
+        distToLight).r;
     
 	//sample textures
     float2 uv = input.uv * uvScale + uvOffset;
@@ -83,6 +84,10 @@ float4 main(VertexToPixel input) : SV_TARGET
                 lightTerm += SpotLight(input, lights[i], surfaceColor, cameraPosition, roughness, metalness, specularColor);
                 break;
 
+        }
+        if (i == 0)
+        {
+            lightTerm *= shadowAmount;
         }
     }
     float4 finalColor = /*ambientTerm +*/ lightTerm;
