@@ -8,6 +8,8 @@ struct VertexBufferStruct {
 	DirectX::XMFLOAT4X4 view;
 	DirectX::XMFLOAT4X4 projection;
 	DirectX::XMFLOAT4X4 worldInvTranspose;
+	DirectX::XMFLOAT4X4 lightView;
+	DirectX::XMFLOAT4X4 lightProjection;
 	DirectX::XMFLOAT3 tangent;
 	float time;
 };

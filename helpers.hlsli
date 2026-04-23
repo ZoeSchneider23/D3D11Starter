@@ -21,6 +21,7 @@ struct VertexToPixel
     float time : TIME;
     float3 worldPosition : POSITION;
     float3 tangent : TANGENT;
+    float4 shadowMapPos : SHADOW_POSITION;
 };
 
 struct VertexShaderInput
@@ -99,7 +100,7 @@ float diffuse,
 float3 F, // Should be result of just F_Schlick()
 float metalness)
 {
-    return diffuse * (1 - F) * (1 - metalness);
+    return (diffuse * (1 - F) * (1 - metalness)).r;
 }
 
 float Attenuate(Light light, float3 worldPos)

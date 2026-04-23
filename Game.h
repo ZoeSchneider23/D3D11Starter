@@ -94,5 +94,14 @@ private:
 	SkyVertexBufferStruct skyVsData;
 	Microsoft::WRL::ComPtr<ID3D11SamplerState> samplerState;
 
+	Microsoft::WRL::ComPtr<ID3D11DepthStencilView> shadowDSV;
+	Microsoft::WRL::ComPtr<ID3D11ShaderResourceView> shadowSRV;
+	Microsoft::WRL::ComPtr<ID3D11RasterizerState> shadowRasterizer;
+	Microsoft::WRL::ComPtr<ID3D11SamplerState> shadowSampler;
+	DirectX::XMFLOAT4X4 lightViewMatrix;
+	DirectX::XMFLOAT4X4 lightProjectionMatrix;
+
+	const int shadowMapResolution = 1024;
+	float lightProjectionSize;
 };
 
